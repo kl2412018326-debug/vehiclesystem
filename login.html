@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Smart Auto Care</title>
+    <title>Login - Smart Vehicle System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -44,7 +44,6 @@
     </div>
 </div>
 
-<script src="db_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -54,12 +53,17 @@
 
     document.getElementById('loginForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const email = document.getElementById('email').value.toLowerCase();
+        const email = document.getElementById('email').value.trim().toLowerCase();
 
+        // 1. Check registered user details from LocalStorage
+        const registeredUser = JSON.parse(localStorage.getItem('registeredUser'));
         let role = 'Customer';
-        let fullName = 'John Doe';
+        let fullName = 'User';
 
-        if (email.includes('admin')) {
+        if (registeredUser && registeredUser.email.toLowerCase() === email) {
+            role = registeredUser.role;
+            fullName = registeredUser.fullName;
+        } else if (email.includes('admin')) {
             role = 'Admin';
             fullName = 'System Administrator';
         } else if (email.includes('mechanic')) {
@@ -70,6 +74,7 @@
         const user = { id: Date.now(), fullName: fullName, email: email, role: role };
         localStorage.setItem('currentUser', JSON.stringify(user));
 
+        // 2. Route based on role
         if (role === 'Admin') {
             window.location.href = 'admin_dashboard.html';
         } else if (role === 'Mechanic') {

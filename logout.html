@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Logout - Smart Vehicle System</title>
+    <script>
+        // Clear user session from browser storage
+        localStorage.removeItem('currentUser');
+        sessionStorage.clear();
+
+        // Redirect to login page
+        window.location.href = 'login.html';
+    </script>
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
+    <p class="text-muted">Logging out, please wait...</p>
+</body>
+</html>

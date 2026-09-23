@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Digital Service Record</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-light p-4">
+<div class="container bg-white p-4 shadow rounded" style="max-width: 800px;">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2>Digital Vehicle Health Record</h2>
+            <p class="text-muted mb-0">Owner: <span id="ownerName">John Doe</span></p>
+            <p class="text-muted">Vehicle Plate: <strong id="plateNum">WX1234Y</strong> | Model: <span id="modelName">Perodua Myvi</span></p>
+        </div>
+        <div id="qrcode"></div>
+    </div>
+
+    <h4>Maintenance History</h4>
+    <div id="historyContainer">
+        <div class="card mb-3 border-secondary">
+            <div class="card-header d-flex justify-content-between">
+                <span>Date: <strong>2026-08-15</strong></span>
+                <span>Mechanic: Alex Mechanic</span>
+            </div>
+            <div class="card-body">
+                <p><strong>Findings:</strong> Brake pads worn out, low engine oil level.</p>
+                <p><strong>Repairs Done:</strong> Replaced front brake pads and performed full synthetic oil change.</p>
+                <p><strong>Replaced Components:</strong> Brake Pads, Engine Oil 4L, Oil Filter</p>
+                <p><strong>Cost:</strong> RM 320.00</p>
+                <div class="alert alert-light border mb-0">
+                    <strong>AI Recommendation Log:</strong> AI Alert: Brake pads critical. Scheduled replacement completed. Next interval in 10,000 KM.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    new QRCode(document.getElementById("qrcode"), {
+        text: window.location.href,
+        width: 100,
+        height: 100
+    });
+</script>
+</body>
+</html>

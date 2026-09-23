@@ -1,67 +1,117 @@
-<?php
-require_once 'db_config.php';
-session_start();
-$error = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-
-    $stmt = $conn->prepare("SELECT id, full_name, password, role FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($user = $result->fetch_assoc()) {
-        if (password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['role'] = $user['role'];
-
-            if ($user['role'] === 'Admin') header("Location: admin_dashboard.php");
-            elseif ($user['role'] === 'Mechanic') header("Location: mechanic_dashboard.php");
-            else header("Location: customer_dashboard.php");
-            exit();
-        }
-    }
-    $error = "Invalid credentials. Try again.";
-}
-?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Smart Vehicle System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Auto Care - Log Masuk & Daftar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<?php include 'navbar.php'; ?>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="index.html">Smart Auto Care</a>
+  </div>
+</nav>
+
 <div class="container" style="max-width: 450px;">
-    <div class="card shadow">
+    <div class="card shadow" id="loginCard">
         <div class="card-body">
-            <h3 class="card-title text-center mb-4">User Login</h3>
-            <?php if (isset($_GET['registered'])): ?>
-                <div class="alert alert-success">Account created! Please login.</div>
-            <?php endif; ?>
-            <?php if ($error): ?>
-                <div class="alert alert-danger"><?= $error ?></div>
-            <?php endif; ?>
-            <form method="POST">
+            <h3 class="card-title text-center mb-4">Log Masuk Pengguna</h3>
+            <div id="alertBox"></div>
+            <form id="loginForm">
                 <div class="mb-3">
-                    <label class="form-label">Email address</label>
-                    <input type="email" name="email" class="form-control" required>
+                    <label class="form-label">E-mel</label>
+                    <input type="email" id="loginEmail" class="form-control" required placeholder="user@example.com">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <label class="form-label">Kata Laluan</label>
+                    <input type="password" id="loginPass" class="form-control" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Login</button>
+                <button type="submit" class="btn btn-primary w-100">Log Masuk</button>
             </form>
             <div class="text-center mt-3">
-                <a href="register.php">Need an account? Register</a>
+                <a href="#" onclick="toggleAuth('register')">Belum ada akaun? Daftar di sini</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow d-none" id="registerCard">
+        <div class="card-body">
+            <h3 class="card-title text-center mb-4">Daftar Akaun Baru</h3>
+            <form id="registerForm">
+                <div class="mb-3">
+                    <label class="form-label">Nama Penuh</label>
+                    <input type="text" id="regName" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">E-mel</label>
+                    <input type="email" id="regEmail" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Kata Laluan</label>
+                    <input type="password" id="regPass" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Peranan (Role)</label>
+                    <select id="regRole" class="form-select">
+                        <option value="Customer">Pelanggan (Customer)</option>
+                        <option value="Mechanic">Mekanik (Mechanic)</option>
+                        <option value="Admin">Pentadbir (Admin)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success w-100">Daftar Akaun</button>
+            </form>
+            <div class="text-center mt-3">
+                <a href="#" onclick="toggleAuth('login')">Sudah ada akaun? Log Masuk</a>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function toggleAuth(type) {
+    if (type === 'register') {
+        document.getElementById('loginCard').classList.add('d-none');
+        document.getElementById('registerCard').classList.remove('d-none');
+    } else {
+        document.getElementById('registerCard').classList.add('d-none');
+        document.getElementById('loginCard').classList.remove('d-none');
+    }
+}
+
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('regName').value;
+    const email = document.getElementById('regEmail').value;
+    const role = document.getElementById('regRole').value;
+
+    const user = { name, email, role };
+    localStorage.setItem('currentUser', JSON.stringify(user));
+
+    alert('Pendaftaran Berjaya!');
+    redirectUser(role);
+});
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+
+    let role = 'Customer';
+    if (email.includes('admin')) role = 'Admin';
+    if (email.includes('mechanic')) role = 'Mechanic';
+
+    const user = { name: email.split('@')[0], email, role };
+    localStorage.setItem('currentUser', JSON.stringify(user));
+
+    redirectUser(role);
+});
+
+function redirectUser(role) {
+    if (role === 'Admin') window.location.href = 'admin_dashboard.html';
+    else if (role === 'Mechanic') window.location.href = 'mechanic_dashboard.html';
+    else window.location.href = 'customer_dashboard.html';
+}
+</script>
 </body>
 </html>

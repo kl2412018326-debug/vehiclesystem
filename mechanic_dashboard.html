@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mechanic Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -11,7 +12,7 @@
   <div class="container">
     <a class="navbar-brand fw-bold" href="#">Smart Auto Care</a>
     <div class="ms-auto text-light">
-      <span class="me-3">Welcome, Alex Mechanic (Mechanic)</span>
+      <span class="me-3" id="mechanicWelcome">Welcome, Mechanic</span>
       <button onclick="logout()" class="btn btn-outline-light btn-sm">Logout</button>
     </div>
   </div>
@@ -28,7 +29,7 @@
                 <thead>
                     <tr><th>Appt ID</th><th>Customer</th><th>Vehicle</th><th>Date</th><th>Action</th></tr>
                 </thead>
-                <tbody id="taskTable">
+                <tbody>
                     <tr>
                         <td>#101</td>
                         <td>John Doe</td>
@@ -44,7 +45,6 @@
     </div>
 </div>
 
-<!-- Modal for Service Record Entry -->
 <div class="modal fade" id="serviceModal101" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -57,19 +57,19 @@
             <input type="hidden" name="appointment_id" value="101">
             <div class="mb-3">
                 <label class="form-label">Inspection Findings</label>
-                <textarea id="findings" name="findings" class="form-control" required placeholder="e.g. Brake pads worn out, low oil"></textarea>
+                <textarea id="findings" class="form-control" required placeholder="e.g. Brake pads worn out, low oil"></textarea>
             </div>
             <div class="mb-3">
                 <label class="form-label">Repairs / Maintenance Details</label>
-                <textarea id="repairs" name="repairs" class="form-control" required></textarea>
+                <textarea id="repairs" class="form-control" required></textarea>
             </div>
             <div class="mb-3">
                 <label class="form-label">Replaced Components</label>
-                <input type="text" id="components" name="components" class="form-control" placeholder="e.g. Engine Oil, Oil Filter">
+                <input type="text" id="components" class="form-control" placeholder="e.g. Engine Oil, Oil Filter">
             </div>
             <div class="mb-3">
                 <label class="form-label">Estimated Cost (RM)</label>
-                <input type="number" step="0.01" id="cost" name="cost" class="form-control" required>
+                <input type="number" step="0.01" id="cost" class="form-control" required>
             </div>
           </div>
           <div class="modal-footer">
@@ -80,12 +80,21 @@
   </div>
 </div>
 
+<script src="db_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (currentUser && currentUser.fullName) {
+        document.getElementById('mechanicWelcome').innerText = `Welcome, ${currentUser.fullName}`;
+    }
+
     document.getElementById('serviceForm').addEventListener('submit', function(e) {
         e.preventDefault();
         document.getElementById('messageBox').innerHTML = '<div class="alert alert-success">Service record saved and AI analysis updated successfully!</div>';
-        bootstrap.Modal.getInstance(document.getElementById('serviceModal101')).hide();
+        
+        const modalElement = document.getElementById('serviceModal101');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+        modalInstance.hide();
     });
 
     function logout() {

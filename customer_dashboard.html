@@ -2,59 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
   <div class="container">
     <a class="navbar-brand fw-bold" href="#">Smart Auto Care</a>
-    <div class="ms-auto text-light">
-      <span class="me-3" id="welcomeUser">Welcome, Customer</span>
-      <button onclick="logout()" class="btn btn-outline-light btn-sm">Logout</button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><span class="nav-link text-light" id="userInfo"></span></li>
+        <li class="nav-item"><button class="btn btn-outline-light ms-2" onclick="logout()">Logout</button></li>
+      </ul>
     </div>
   </div>
 </nav>
 
 <div class="container">
     <h2 class="mb-4">My Dashboard</h2>
-    <div id="messageBox"></div>
+    <div id="msgBox"></div>
 
     <div class="row">
-        <!-- Vehicle List & Health Score -->
         <div class="col-md-7">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <span>My Vehicles</span>
                     <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#addVehicleModal">+ Add Vehicle</button>
                 </div>
-                <div class="card-body" id="vehicleList">
-                    <!-- Vehicle Items Rendered Here -->
-                </div>
+                <div class="card-body" id="vehicleListContainer"></div>
             </div>
         </div>
 
-        <!-- Book Appointment Form -->
         <div class="col-md-5">
             <div class="card shadow-sm">
                 <div class="card-header bg-dark text-white">Book Maintenance Service</div>
                 <div class="card-body">
-                    <form id="bookingForm">
+                    <form id="bookApptForm">
                         <div class="mb-3">
                             <label class="form-label">Select Vehicle</label>
-                            <select id="vehicleSelect" name="vehicle_id" class="form-select" required>
-                                <!-- Rendered via JS -->
-                            </select>
+                            <select id="apptVehicleId" class="form-select" required></select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Preferred Date</label>
-                            <input type="date" id="appointment_date" name="appointment_date" class="form-control" required>
+                            <input type="date" id="apptDate" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Service Notes / Issues</label>
-                            <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Describe issues..."></textarea>
+                            <textarea id="apptNotes" class="form-control" rows="3" placeholder="Describe issues..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Submit Booking</button>
                     </form>
@@ -64,7 +60,6 @@
     </div>
 </div>
 
-<!-- Add Vehicle Modal -->
 <div class="modal fade" id="addVehicleModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -76,15 +71,15 @@
           <div class="modal-body">
             <div class="mb-3">
                 <label class="form-label">Plate Number</label>
-                <input type="text" id="plate_number" name="plate_number" class="form-control" required placeholder="e.g. WX1234Y">
+                <input type="text" id="plateNumber" class="form-control" required placeholder="e.g. WX1234Y">
             </div>
             <div class="mb-3">
                 <label class="form-label">Vehicle Model</label>
-                <input type="text" id="model" name="model" class="form-control" required placeholder="e.g. Perodua Myvi">
+                <input type="text" id="model" class="form-control" required placeholder="e.g. Perodua Myvi">
             </div>
             <div class="mb-3">
                 <label class="form-label">Current Mileage (km)</label>
-                <input type="number" id="current_mileage" name="current_mileage" class="form-control" required>
+                <input type="number" id="mileage" class="form-control" required>
             </div>
           </div>
           <div class="modal-footer">
@@ -97,41 +92,49 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let vehicles = JSON.parse(localStorage.getItem('vehicles')) || [
-        { id: 1, plate_number: 'WX1234Y', model: 'Perodua Myvi', current_mileage: 6200, last_service_mileage: 1000, health_score: 85 }
-    ];
+    const user = JSON.parse(localStorage.getItem('sessionUser'));
+    if (!user || user.role !== 'Customer') {
+        window.location.href = 'index.html';
+    }
+
+    document.getElementById('userInfo').textContent = `Welcome, ${user.full_name} (${user.role})`;
+
+    function logout() {
+        localStorage.removeItem('sessionUser');
+        window.location.href = 'index.html';
+    }
 
     function renderVehicles() {
-        const list = document.getElementById('vehicleList');
-        const select = document.getElementById('vehicleSelect');
-        list.innerHTML = '';
+        const vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+        const myVehicles = vehicles.filter(v => v.customer_id === user.id);
+        const container = document.getElementById('vehicleListContainer');
+        const select = document.getElementById('apptVehicleId');
+
+        container.innerHTML = '';
         select.innerHTML = '';
 
-        if (vehicles.length === 0) {
-            list.innerHTML = '<p>No registered vehicles found.</p>';
+        if (myVehicles.length === 0) {
+            container.innerHTML = '<p class="text-muted">No registered vehicles found.</p>';
             return;
         }
 
-        vehicles.forEach(v => {
+        myVehicles.forEach(v => {
             const diff = v.current_mileage - v.last_service_mileage;
-            let aiText = '';
-            if (diff > 5000) {
-                aiText = 'Service Required immediately! Oil life exceeded recommended limit (Interval: 5,000km). Estimated Cost: RM 150 - RM 250.';
-            } else {
-                aiText = `Vehicle operational status normal. Next scheduled service in ${5000 - diff} km.`;
-            }
+            let recText = diff > 5000 
+                ? "Service Required immediately! Oil life exceeded recommended limit (Interval: 5,000km). Estimated Cost: RM 150 - RM 250."
+                : `Vehicle operational status normal. Next scheduled service in ${5000 - diff} km.`;
 
             const badgeColor = v.health_score > 75 ? 'success' : (v.health_score > 40 ? 'warning' : 'danger');
 
-            list.innerHTML += `
+            container.innerHTML += `
                 <div class="border rounded p-3 mb-3 bg-white">
                     <div class="d-flex justify-content-between">
                         <h5>${v.plate_number} - ${v.model}</h5>
                         <span class="badge bg-${badgeColor}">Health Score: ${v.health_score}%</span>
                     </div>
-                    <p class="mb-1">Current Mileage: <strong>${v.current_mileage.toLocaleString()} km</strong></p>
+                    <p class="mb-1">Current Mileage: <strong>${Number(v.current_mileage).toLocaleString()} km</strong></p>
                     <div class="alert alert-info py-2 mt-2">
-                        <strong>AI Predictive Recommendation:</strong><br>${aiText}
+                        <strong>AI Predictive Recommendation:</strong><br>${recText}
                     </div>
                     <a href="qr_service.html?vehicle_id=${v.id}" class="btn btn-sm btn-outline-dark" target="_blank">Access Digital QR Record</a>
                 </div>
@@ -143,36 +146,45 @@
 
     document.getElementById('addVehicleForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const plate = document.getElementById('plate_number').value;
-        const model = document.getElementById('model').value;
-        const mileage = parseInt(document.getElementById('current_mileage').value);
-
-        const newV = {
-            id: vehicles.length + 1,
-            plate_number: plate,
-            model: model,
+        const vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+        const mileage = parseInt(document.getElementById('mileage').value);
+        
+        const newVehicle = {
+            id: Date.now(),
+            customer_id: user.id,
+            plate_number: document.getElementById('plateNumber').value.trim(),
+            model: document.getElementById('model').value.trim(),
             current_mileage: mileage,
             last_service_mileage: mileage,
             health_score: 100
         };
 
-        vehicles.push(newV);
+        vehicles.push(newVehicle);
         localStorage.setItem('vehicles', JSON.stringify(vehicles));
-        renderVehicles();
-
-        document.getElementById('messageBox').innerHTML = '<div class="alert alert-success">Vehicle added successfully!</div>';
+        
         bootstrap.Modal.getInstance(document.getElementById('addVehicleModal')).hide();
+        document.getElementById('msgBox').innerHTML = '<div class="alert alert-success">Vehicle added successfully!</div>';
+        renderVehicles();
     });
 
-    document.getElementById('bookingForm').addEventListener('submit', function(e) {
+    document.getElementById('bookApptForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        document.getElementById('messageBox').innerHTML = '<div class="alert alert-success">Service appointment booked!</div>';
-    });
+        const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        
+        const newAppt = {
+            id: Date.now(),
+            customer_id: user.id,
+            vehicle_id: parseInt(document.getElementById('apptVehicleId').value),
+            appointment_date: document.getElementById('apptDate').value,
+            notes: document.getElementById('apptNotes').value,
+            status: 'Pending'
+        };
 
-    function logout() {
-        localStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
-    }
+        appointments.push(newAppt);
+        localStorage.setItem('appointments', JSON.stringify(appointments));
+
+        document.getElementById('msgBox').innerHTML = '<div class="alert alert-success">Service appointment booked!</div>';
+    });
 
     renderVehicles();
 </script>

@@ -11,16 +11,18 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
   <div class="container">
     <a class="navbar-brand fw-bold" href="#">Smart Auto Care</a>
-    <div class="ms-auto text-light">
-      <span class="me-3" id="mechanicWelcome">Welcome, Mechanic</span>
-      <button onclick="logout()" class="btn btn-outline-light btn-sm">Logout</button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><span class="nav-link text-light" id="userInfo"></span></li>
+        <li class="nav-item"><button class="btn btn-outline-light ms-2" onclick="logout()">Logout</button></li>
+      </ul>
     </div>
   </div>
 </nav>
 
 <div class="container">
     <h2 class="mb-4">Mechanic Workstation</h2>
-    <div id="messageBox"></div>
+    <div id="msgBox"></div>
 
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-dark text-white">Assigned Service Tasks</div>
@@ -29,32 +31,24 @@
                 <thead>
                     <tr><th>Appt ID</th><th>Customer</th><th>Vehicle</th><th>Date</th><th>Action</th></tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td>#101</td>
-                        <td>John Doe</td>
-                        <td>WX1234Y (Perodua Myvi)</td>
-                        <td>2026-09-25</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal101">Inspect & Record</button>
-                        </td>
-                    </tr>
-                </tbody>
+                <tbody id="taskTableBody"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="serviceModal101" tabindex="-1">
+<!-- Single Reusable Modal -->
+<div class="modal fade" id="serviceModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <form id="serviceForm">
           <div class="modal-header">
-            <h5 class="modal-title">Service Task #101</h5>
+            <h5 class="modal-title" id="modalTitle">Service Task</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <input type="hidden" name="appointment_id" value="101">
+            <input type="hidden" id="modalApptId">
+            <input type="hidden" id="modalVehicleId">
             <div class="mb-3">
                 <label class="form-label">Inspection Findings</label>
                 <textarea id="findings" class="form-control" required placeholder="e.g. Brake pads worn out, low oil"></textarea>
@@ -80,27 +74,110 @@
   </div>
 </div>
 
-<script src="db_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (currentUser && currentUser.fullName) {
-        document.getElementById('mechanicWelcome').innerText = `Welcome, ${currentUser.fullName}`;
+    const user = JSON.parse(localStorage.getItem('sessionUser'));
+    if (!user || user.role !== 'Mechanic') window.location.href = 'index.html';
+
+    document.getElementById('userInfo').textContent = `Welcome, ${user.full_name} (${user.role})`;
+
+    function logout() {
+        localStorage.removeItem('sessionUser');
+        window.location.href = 'index.html';
+    }
+
+    function renderTasks() {
+        const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        const users = JSON.parse(localStorage.getItem('users')) || [];
+        const vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+
+        const pending = appointments.filter(a => a.status === 'Pending');
+        const tbody = document.getElementById('taskTableBody');
+        tbody.innerHTML = '';
+
+        if (pending.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No pending service tasks available.</td></tr>';
+            return;
+        }
+
+        pending.forEach(a => {
+            const cust = users.find(u => u.id === a.customer_id) || { full_name: 'Unknown' };
+            const veh = vehicles.find(v => v.id === a.vehicle_id) || { plate_number: 'N/A', model: 'N/A' };
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>#${a.id}</td>
+                    <td>${cust.full_name}</td>
+                    <td>${veh.plate_number} (${veh.model})</td>
+                    <td>${a.appointment_date}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="openServiceModal(${a.id}, ${a.vehicle_id})">Inspect & Record</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function openServiceModal(apptId, vehicleId) {
+        document.getElementById('modalApptId').value = apptId;
+        document.getElementById('modalVehicleId').value = vehicleId;
+        document.getElementById('modalTitle').textContent = `Service Task #${apptId}`;
+        new bootstrap.Modal(document.getElementById('serviceModal')).show();
     }
 
     document.getElementById('serviceForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        document.getElementById('messageBox').innerHTML = '<div class="alert alert-success">Service record saved and AI analysis updated successfully!</div>';
-        
-        const modalElement = document.getElementById('serviceModal101');
-        const modalInstance = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-        modalInstance.hide();
+        const apptId = parseInt(document.getElementById('modalApptId').value);
+        const vehicleId = parseInt(document.getElementById('modalVehicleId').value);
+        const findings = document.getElementById('findings').value;
+        const repairs = document.getElementById('repairs').value;
+        const components = document.getElementById('components').value;
+        const cost = parseFloat(document.getElementById('cost').value);
+
+        let aiRec = "Standard maintenance complete.";
+        const lowerF = findings.toLowerCase();
+        if (lowerF.includes('brake')) {
+            aiRec = "AI Alert: Brake pads critical. Schedule replacement in next 1,000 KM.";
+        } else if (lowerF.includes('oil')) {
+            aiRec = "AI Alert: Engine oil degradation detected. Recommended replacement interval set.";
+        }
+
+        // Save service record
+        const serviceRecords = JSON.parse(localStorage.getItem('service_records')) || [];
+        serviceRecords.push({
+            id: Date.now(),
+            appointment_id: apptId,
+            mechanic_id: user.id,
+            mechanic_name: user.full_name,
+            inspection_findings: findings,
+            repairs_done: repairs,
+            replaced_components: components,
+            estimated_cost: cost,
+            ai_recommendation: aiRec,
+            created_at: new Date().toISOString().split('T')[0]
+        });
+        localStorage.setItem('service_records', JSON.stringify(serviceRecords));
+
+        // Update appointment status
+        const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        const appt = appointments.find(a => a.id === apptId);
+        if (appt) appt.status = 'Completed';
+        localStorage.setItem('appointments', JSON.stringify(appointments));
+
+        // Update vehicle health score
+        const vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+        const veh = vehicles.find(v => v.id === vehicleId);
+        if (veh) {
+            veh.health_score = Math.max((veh.health_score || 100) - 15, 20);
+        }
+        localStorage.setItem('vehicles', JSON.stringify(vehicles));
+
+        bootstrap.Modal.getInstance(document.getElementById('serviceModal')).hide();
+        document.getElementById('msgBox').innerHTML = '<div class="alert alert-success">Service record saved and AI analysis updated successfully!</div>';
+        renderTasks();
     });
 
-    function logout() {
-        localStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
-    }
+    renderTasks();
 </script>
 </body>
 </html>

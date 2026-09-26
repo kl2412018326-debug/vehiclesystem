@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital Service Record</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -11,38 +12,70 @@
     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
         <div>
             <h2>Digital Vehicle Health Record</h2>
-            <p class="text-muted mb-0">Owner: <span id="ownerName">John Doe</span></p>
-            <p class="text-muted">Vehicle Plate: <strong id="plateNum">WX1234Y</strong> | Model: <span id="modelName">Perodua Myvi</span></p>
+            <p class="text-muted mb-0" id="ownerName">Owner: --</p>
+            <p class="text-muted" id="vehicleMeta">Vehicle Plate: -- | Model: --</p>
         </div>
         <div id="qrcode"></div>
     </div>
 
     <h4>Maintenance History</h4>
-    <div id="historyContainer">
-        <div class="card mb-3 border-secondary">
-            <div class="card-header d-flex justify-content-between">
-                <span>Date: <strong>2026-08-15</strong></span>
-                <span>Mechanic: Alex Mechanic</span>
-            </div>
-            <div class="card-body">
-                <p><strong>Findings:</strong> Brake pads worn out, low engine oil level.</p>
-                <p><strong>Repairs Done:</strong> Replaced front brake pads and performed full synthetic oil change.</p>
-                <p><strong>Replaced Components:</strong> Brake Pads, Engine Oil 4L, Oil Filter</p>
-                <p><strong>Cost:</strong> RM 320.00</p>
-                <div class="alert alert-light border mb-0">
-                    <strong>AI Recommendation Log:</strong> AI Alert: Brake pads critical. Scheduled replacement completed. Next interval in 10,000 KM.
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="historyContainer"></div>
 </div>
 
 <script>
-    new QRCode(document.getElementById("qrcode"), {
-        text: window.location.href,
-        width: 100,
-        height: 100
-    });
+    const urlParams = new URLSearchParams(window.location.search);
+    const vId = parseInt(urlParams.get('vehicle_id')) || 0;
+
+    const vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const serviceRecords = JSON.parse(localStorage.getItem('service_records')) || [];
+
+    const vehicle = vehicles.find(v => v.id === vId);
+
+    if (!vehicle) {
+        document.body.innerHTML = '<div class="container mt-5 alert alert-danger">Vehicle Record Not Found!</div>';
+    } else {
+        const owner = users.find(u => u.id === vehicle.customer_id) || { full_name: 'Unknown' };
+        document.title = `Digital Service Record - ${vehicle.plate_number}`;
+        document.getElementById('ownerName').textContent = `Owner: ${owner.full_name}`;
+        document.getElementById('vehicleMeta').innerHTML = `Vehicle Plate: <strong>${vehicle.plate_number}</strong> | Model: ${vehicle.model}`;
+
+        const myAppts = appointments.filter(a => a.vehicle_id === vId).map(a => a.id);
+        const history = serviceRecords.filter(sr => myAppts.includes(sr.appointment_id));
+
+        const container = document.getElementById('historyContainer');
+        if (history.length === 0) {
+            container.innerHTML = '<p class="text-muted">No completed service records logged yet.</p>';
+        } else {
+            history.forEach(sr => {
+                const appt = appointments.find(a => a.id === sr.appointment_id) || { appointment_date: 'N/A' };
+                container.innerHTML += `
+                    <div class="card mb-3 border-secondary">
+                        <div class="card-header d-flex justify-content-between">
+                            <span>Date: <strong>${appt.appointment_date}</strong></span>
+                            <span>Mechanic: ${sr.mechanic_name || 'Staff'}</span>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Findings:</strong> ${sr.inspection_findings}</p>
+                            <p><strong>Repairs Done:</strong> ${sr.repairs_done}</p>
+                            <p><strong>Replaced Parts:</strong> ${sr.replaced_components || 'None'}</p>
+                            <p><strong>Cost:</strong> RM ${Number(sr.estimated_cost).toFixed(2)}</p>
+                            <div class="alert alert-light border mb-0">
+                                <strong>AI Recommendation Log:</strong> ${sr.ai_recommendation}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        new QRCode(document.getElementById("qrcode"), {
+            text: window.location.href,
+            width: 100,
+            height: 100
+        });
+    }
 </script>
 </body>
 </html>
